@@ -1,6 +1,7 @@
 -- Spider-Man Script для Roblox
 -- Автор: Kilo Code
 -- Описание: Превращает игрока в человека-паука с полетом и визуальными эффектами
+-- Интегрировано с AC Tester v4.3
 
 local SpiderMan = {}
 SpiderMan.__index = SpiderMan
@@ -57,30 +58,39 @@ function SpiderMan.new(player)
 end
 
 function SpiderMan:Initialize()
+    print("Диагностика: Начало инициализации Spider-Man для игрока: " .. self.Player.Name)
+
     -- Ждем загрузки персонажа
     if not self.Character or not self.Character.Parent then
+        print("Диагностика: Ожидание загрузки персонажа...")
         self.Player.CharacterAdded:Wait()
         self.Character = self.Player.Character
         self.Humanoid = self.Character:WaitForChild("Humanoid")
         self.HumanoidRootPart = self.Character:WaitForChild("HumanoidRootPart")
+        print("Диагностика: Персонаж загружен")
     end
 
     -- Создаем визуальные эффекты
+    print("Диагностика: Создание визуальных эффектов...")
     self:CreateVisualEffects()
 
     -- Создаем звуки
+    print("Диагностика: Создание звуков...")
     self:CreateSounds()
 
     -- Подключаем управление
+    print("Диагностика: Подключение управления...")
     self:SetupControls()
 
     -- Запускаем цикл обновления
+    print("Диагностика: Запуск цикла обновления...")
     self:StartUpdateLoop()
 
-    print("Spider-Man инициализирован для игрока: " .. self.Player.Name)
+    print("Диагностика: Spider-Man инициализирован для игрока: " .. self.Player.Name)
 end
 
 function SpiderMan:CreateVisualEffects()
+    print("Диагностика: Создание визуальных эффектов...")
     -- Создаем паутину-пarticles
     self.WebParticles = Instance.new("ParticleEmitter")
     self.WebParticles.Name = "WebParticles"
@@ -371,6 +381,9 @@ function SpiderMan:TransformToSpiderMan()
 
     self.IsSpiderMan = true
 
+    -- Отключаем конфликтующие читы из Script.lua
+    self:DisableConflictingCheats()
+
     -- Добавляем костюм человека-паука (цвета)
     for _, part in pairs(self.Character:GetDescendants()) do
         if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
@@ -402,6 +415,30 @@ function SpiderMan:TransformToSpiderMan()
     end
 
     print("Игрок " .. self.Player.Name .. " превращён в человека-паука!")
+end
+
+function SpiderMan:DisableConflictingCheats()
+    print("Диагностика: Отключение конфликтующих читов...")
+
+    -- Отключаем полет из Script.lua если он активен
+    if _G.cheats and _G.cheats.fly then
+        print("Диагностика: Отключение fly режима из Script.lua")
+        _G.toggleFly()
+    end
+
+    -- Отключаем скорость если она активна
+    if _G.cheats and _G.cheats.speed then
+        print("Диагностика: Отключение speed режима из Script.lua")
+        _G.toggleSpeed()
+    end
+
+    -- Отключаем платформенную ходьбу если она активна
+    if _G.cheats and _G.cheats.platformWalk then
+        print("Диагностика: Отключение platform walk режима из Script.lua")
+        _G.togglePlatformWalk()
+    end
+
+    print("Диагностика: Конфликтующие читы отключены")
 end
 
 function SpiderMan:Cleanup()
@@ -438,6 +475,8 @@ end
 
 -- Глобальная функция для инициализации
 function InitializeSpiderMan(player)
+    print("Диагностика: Вызов InitializeSpiderMan для игрока: " .. player.Name)
+
     local spiderMan = SpiderMan.new(player)
     spiderMan:Initialize()
     spiderMan:TransformToSpiderMan()
@@ -451,6 +490,57 @@ function InitializeSpiderMan(player)
             spiderMan:Cleanup()
         end
     end)
+
+    print("Диагностика: Spider-Man инициализирован успешно для игрока: " .. player.Name)
+end
+
+-- Глобальная функция для интеграции с Script.lua
+function ToggleSpiderMan()
+    print("Диагностика: ToggleSpiderMan вызван")
+
+    local player = game.Players.LocalPlayer
+    if not player then
+        print("Диагностика: Локальный игрок не найден")
+        return false
+    end
+
+    -- Проверяем, активен ли уже Spider-Man режим
+    if player.SpiderManInstance and player.SpiderManInstance.IsSpiderMan then
+        print("Диагностика: Отключение Spider-Man режима")
+        player.SpiderManInstance:Cleanup()
+        player.SpiderManInstance = nil
+
+        -- Восстанавливаем костюм игрока
+        if player.Character then
+            for _, part in pairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    part.Color = Color3.fromRGB(156, 102, 31) -- Стандартный цвет Roblox
+                    part.Material = Enum.Material.Plastic
+                end
+            end
+        end
+
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "🕷️ Spider-Man OFF",
+            Text = "Режим человека-паука отключен",
+            Duration = 3
+        })
+
+        print("Диагностика: Spider-Man режим отключен")
+        return false
+    else
+        print("Диагностика: Включение Spider-Man режима")
+        InitializeSpiderMan(player)
+
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "🕷️ Spider-Man ON",
+            Text = "Режим человека-паука активирован! E - полет, Q - паутина",
+            Duration = 4
+        })
+
+        print("Диагностика: Spider-Man режим включен")
+        return true
+    end
 end
 
 -- Подключаем к событию появления игроков
@@ -465,5 +555,7 @@ Players.PlayerAdded:Connect(function(player)
 end)
 
 print("Spider-Man скрипт загружен успешно!")
+print("Диагностика: Модуль SpiderMan создан, но не инициализирован")
+print("Диагностика: Ожидание вызова InitializeSpiderMan(player)")
 
 return SpiderMan

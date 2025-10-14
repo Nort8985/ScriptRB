@@ -1545,6 +1545,7 @@ end, Color3.new(0.9, 0.6, 0.2), false)
 
 createButton("📍 Checkpoints", openCheckpointManager, Color3.new(0.3, 0.7, 0.9), false)
 createButton("📦 Дублировать предмет", toggleItemDuplication, Color3.new(0.9, 0.7, 0.3), true)
+createButton("🕷️ Spider-Man Mode", function() return _G.ToggleSpiderMan and _G.ToggleSpiderMan() end, Color3.new(0.8, 0.3, 0.3), true)
 
 -- ==================== EVENT HANDLERS ====================
 minimizeButton.MouseButton1Click:Connect(function() mainFrame.Visible, toggleButton.Visible = false, true end)
@@ -1597,11 +1598,18 @@ closeButton.MouseButton1Click:Connect(function()
     screenGui:Destroy()
 end)
 
+-- ==================== SPIDER-MAN INTEGRATION ====================
+print("Диагностика: Загрузка Spider-Man модуля...")
+local spiderManModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/KiloCode/SpiderMan/main/Spider-Man.lua"))()
+_G.SpiderManModule = spiderManModule
+_G.ToggleSpiderMan = function() return spiderManModule.ToggleSpiderMan() end
+print("Диагностика: Spider-Man модуль загружен успешно")
+
 -- ==================== FINAL NOTIFICATION ====================
 local cpCount = 0; for _ in pairs(_G.SavedCheckpoints) do cpCount = cpCount + 1 end
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "🚀 AC Tester v4.3 Enhanced",
-    Text = "Работает через стены! Задержка 0.5 сек!",
+    Title = "🚀 AC Tester v4.3 + Spider-Man",
+    Text = "Работает через стены! Задержка 0.5 сек! Spider-Man доступен!",
     Duration = 6
 })
-print("AC TESTER v4.3 TELEPORT REACH ENHANCED: Loaded successfully!")
+print("AC TESTER v4.3 TELEPORT REACH ENHANCED + SPIDER-MAN: Loaded successfully!")
