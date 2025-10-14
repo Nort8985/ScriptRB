@@ -17,6 +17,9 @@ local Debris = game:GetService("Debris")
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
 
+-- Добавляем флаг мобильной платформы (Android / touch)
+local IS_MOBILE = UserInputService.TouchEnabled
+
 -- ==================== GLOBALS & SETUP ====================
 _G.SavedCheckpoints = _G.SavedCheckpoints or {}
 local cheats = {
@@ -391,7 +394,8 @@ toggleButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
 toggleButton.Text = "☰"
 toggleButton.TextScaled = true
 toggleButton.TextColor3 = Color3.new(1, 1, 1)
-toggleButton.Visible = false
+-- Делать кнопку видимой сразу на мобильных
+toggleButton.Visible = IS_MOBILE
 toggleButton.Parent = screenGui
 createCorner(toggleButton, 15)
 
@@ -1017,37 +1021,92 @@ end
 
 local function toggleESP()
     cheats.esp = not cheats.esp
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= player and p.Character then
-            local h = p.Character:FindFirstChild("ESPHighlight")
-            if cheats.esp and not h then
-                h = Instance.new("Highlight")
-                h.Name = "ESPHighlight"
-                h.FillColor = Color3.new(1, 0, 0)
-                h.OutlineColor = Color3.new(1, 1, 1)
-                h.FillTransparency = 0.5
-                h.Parent = p.Character
-            elseif not cheats.esp and h then
-                h:Destroy()
+
+    local function createHighlightForCharacter(char)
+        if not char then return end
+        if char:FindFirstChild("ESPHighlight") then return end
+        local h = Instance.new("Highlight")
+        h.Name = "ESPHighlight"
+        h.FillColor = Color3.new(1, 0, 0)
+        h.OutlineColor = Color3.new(1, 1, 1)
+        h.FillTransparency = 0.5
+        h.Parent = char
+    end
+
+    if cheats.esp then
+        -- Для уже присутствующих игроков
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= player then
+                if p.Character then
+                    createHighlightForCharacter(p.Character)
+                end
+                -- Подключаемся к событию CharacterAdded для постоянного восстановления
+                connections["espChar_" .. p.UserId] = p.CharacterAdded:Connect(function(char)
+                    task.wait(0.4)
+                    if cheats.esp then createHighlightForCharacter(char) end
+                end)
+            end
+        end
+
+        -- Когда новые игроки заходят
+        connections.espPlayerAdded = Players.PlayerAdded:Connect(function(p)
+            if p ~= player then
+                connections["espChar_" .. p.UserId] = p.CharacterAdded:Connect(function(char)
+                    task.wait(0.4)
+                    if cheats.esp then createHighlightForCharacter(char) end
+                end)
+                if p.Character then
+                    task.wait(0.4)
+                    createHighlightForCharacter(p.Character)
+                end
+            end
+        end)
+
+        -- Удаляем соединения по выходу игрока
+        connections.espPlayerRemoving = Players.PlayerRemoving:Connect(function(p)
+            local key = "espChar_" .. p.UserId
+            if connections[key] then
+                connections[key]:Disconnect()
+                connections[key] = nil
+            end
+        end)
+
+        -- Периодическое восстановление подсветок (нечасто, чтобы не нагружать)
+        local accumulator = 0
+        connections.espUpdater = RunService.Heartbeat:Connect(function(dt)
+            accumulator = accumulator + dt
+            if accumulator < 0.6 then return end
+            accumulator = 0
+            if not cheats.esp then return end
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= player and p.Character then
+                    createHighlightForCharacter(p.Character)
+                end
+            end
+        end)
+    else
+        -- Отключаем все esp-соединения
+        if connections.espUpdater then connections.espUpdater:Disconnect(); connections.espUpdater = nil end
+        if connections.espPlayerAdded then connections.espPlayerAdded:Disconnect(); connections.espPlayerAdded = nil end
+        if connections.espPlayerRemoving then connections.espPlayerRemoving:Disconnect(); connections.espPlayerRemoving = nil end
+
+        -- Отключаем CharacterAdded-соединения созданные для ESP
+        for k, conn in pairs(connections) do
+            if type(k) == "string" and k:match("^espChar_") then
+                if conn then conn:Disconnect() end
+                connections[k] = nil
+            end
+        end
+
+        -- Удаляем подсветки у всех игроков
+        for _, p in pairs(Players:GetPlayers()) do
+            if p.Character then
+                local h = p.Character:FindFirstChild("ESPHighlight")
+                if h then h:Destroy() end
             end
         end
     end
-    if cheats.esp then
-        connections.espUpdate = Players.PlayerAdded:Connect(function(np)
-            np.CharacterAdded:Connect(function(char)
-                wait(0.5)
-                if cheats.esp then
-                    local h = Instance.new("Highlight")
-                    h.Name = "ESPHighlight"
-                    h.FillColor = Color3.new(1, 0, 0)
-                    h.FillTransparency = 0.5
-                    h.Parent = char
-                end
-            end)
-        end)
-    else
-        if connections.espUpdate then connections.espUpdate:Disconnect() end
-    end
+
     return cheats.esp
 end
 
