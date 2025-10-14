@@ -25,7 +25,8 @@ _G.SavedCheckpoints = _G.SavedCheckpoints or {}
 local cheats = {
     platformWalk = false, antiTrigger = false, invisible = false, spider = false,
     noclip = false, speed = false, infiniteJump = false, esp = false,
-    fly = false, teleport = false, rewind = false, infiniteReach = false
+    fly = false, teleport = false, rewind = false, infiniteReach = false,
+    itemDuplication = false
 }
 local connections = {}
 local teleportMarker = nil
@@ -1141,6 +1142,119 @@ local function toggleFly()
     return cheats.fly
 end
 
+local function toggleItemDuplication()
+    cheats.itemDuplication = not cheats.itemDuplication
+
+    if cheats.itemDuplication then
+        local char = player.Character
+        if not char then
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "📦 Дублирование предметов",
+                Text = "Персонаж не найден",
+                Duration = 3
+            })
+            cheats.itemDuplication = false
+            return cheats.itemDuplication
+        end
+
+        local humanoid = char:FindFirstChild("Humanoid")
+        if not humanoid then
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "📦 Дублирование предметов",
+                Text = "Humanoid не найден",
+                Duration = 3
+            })
+            cheats.itemDuplication = false
+            return cheats.itemDuplication
+        end
+
+        -- Ищем активный инструмент в character игрока
+        local activeTool = nil
+        for _, child in pairs(char:GetChildren()) do
+            if child:IsA("Tool") then
+                activeTool = child
+                break
+            end
+        end
+
+        if not activeTool then
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "📦 Дублирование предметов",
+                Text = "Активный инструмент не найден",
+                Duration = 3
+            })
+            cheats.itemDuplication = false
+            return cheats.itemDuplication
+        end
+
+        -- Создаем клон инструмента
+        local success, duplicatedTool = pcall(function()
+            return activeTool:Clone()
+        end)
+
+        if not success or not duplicatedTool then
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "📦 Дублирование предметов",
+                Text = "Ошибка при создании копии инструмента",
+                Duration = 3
+            })
+            cheats.itemDuplication = false
+            return cheats.itemDuplication
+        end
+
+        -- Размещаем копию рядом с игроком
+        local rootPart = char:FindFirstChild("HumanoidRootPart")
+        if rootPart then
+            local offset = Vector3.new(3, 0, 0) -- Размещаем справа от игрока
+            duplicatedTool.Parent = workspace
+            duplicatedTool.Handle.CFrame = rootPart.CFrame * CFrame.new(offset)
+
+            -- Создаем визуальный эффект дублирования
+            local effect = Instance.new("Part")
+            effect.Name = "DuplicationEffect"
+            effect.Size = Vector3.new(2, 2, 2)
+            effect.Position = duplicatedTool.Handle.Position
+            effect.Anchored = true
+            effect.CanCollide = false
+            effect.Material = Enum.Material.Neon
+            effect.BrickColor = BrickColor.new("Bright yellow")
+            effect.Transparency = 0.3
+            effect.Shape = Enum.PartType.Ball
+            effect.Parent = workspace
+
+            local tween = TweenService:Create(effect, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = Vector3.new(0.1, 0.1, 0.1),
+                Transparency = 1
+            })
+            tween:Play()
+            Debris:AddItem(effect, 0.5)
+
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "📦 Дублирование предметов",
+                Text = "Инструмент '" .. activeTool.Name .. "' успешно дублирован!",
+                Duration = 3
+            })
+        else
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "📦 Дублирование предметов",
+                Text = "HumanoidRootPart не найден",
+                Duration = 3
+            })
+            duplicatedTool:Destroy()
+            cheats.itemDuplication = false
+            return cheats.itemDuplication
+        end
+    else
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "📦 Дублирование предметов",
+            Text = "Режим дублирования отключен",
+            Duration = 2
+        })
+    end
+
+    return cheats.itemDuplication
+end
+
 -- ==================== TELEPORT SYSTEM ====================
 local function setupTeleport()
     cheats.teleport = not cheats.teleport
@@ -1430,6 +1544,7 @@ createButton("🔀 TP Random", function()
 end, Color3.new(0.9, 0.6, 0.2), false)
 
 createButton("📍 Checkpoints", openCheckpointManager, Color3.new(0.3, 0.7, 0.9), false)
+createButton("📦 Дублировать предмет", toggleItemDuplication, Color3.new(0.9, 0.7, 0.3), true)
 
 -- ==================== EVENT HANDLERS ====================
 minimizeButton.MouseButton1Click:Connect(function() mainFrame.Visible, toggleButton.Visible = false, true end)
