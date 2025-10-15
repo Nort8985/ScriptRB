@@ -26,7 +26,7 @@ local cheats = {
     platformWalk = false, antiTrigger = false, invisible = false, spider = false,
     noclip = false, speed = false, infiniteJump = false, esp = false,
     fly = false, teleport = false, rewind = false, infiniteReach = false,
-    itemDuplication = false
+    itemDuplication = false, keybinds = false
 }
 local connections = {}
 local teleportMarker = nil
@@ -165,21 +165,29 @@ end
 
 -- ==================== KEYBIND FUNCTIONS ====================
 local function saveKeybindsToFile()
-    if writefile then
+    if writefile and HttpService then
         pcall(function()
-            writefile("keybinds_" .. game.PlaceId .. ".json", HttpService:JSONEncode(keybinds))
+            local content = HttpService:JSONEncode(keybinds)
+            if content then
+                writefile("keybinds_" .. game.PlaceId .. ".json", content)
+            end
         end)
     end
 end
 
 local function loadKeybindsFromFile()
-    if readfile and isfile then
+    if readfile and isfile and HttpService then
         local filename = "keybinds_" .. game.PlaceId .. ".json"
         pcall(function()
-            if isfile(filename) then
-                local decoded = HttpService:JSONDecode(readfile(filename))
-                for keyCode, funcName in pairs(decoded) do
-                    keybinds[tonumber(keyCode)] = funcName
+            if isfile and isfile(filename) then
+                local content = readfile(filename)
+                if content and content ~= "" then
+                    local decoded = HttpService:JSONDecode(content)
+                    if decoded then
+                        for keyCode, funcName in pairs(decoded) do
+                            keybinds[tonumber(keyCode)] = funcName
+                        end
+                    end
                 end
             end
         end)
@@ -188,20 +196,20 @@ end
 
 local function getFunctionByName(funcName)
     local functions = {
-        toggleInfiniteReach = toggleInfiniteReach,
-        togglePlatformWalk = togglePlatformWalk,
-        toggleAntiTrigger = toggleAntiTrigger,
-        toggleSpider = toggleSpider,
-        toggleNoclip = toggleNoclip,
-        toggleSpeed = toggleSpeed,
-        toggleInfiniteJump = toggleInfiniteJump,
-        toggleESP = toggleESP,
-        toggleFly = toggleFly,
-        toggleRewind = toggleRewind,
-        setupTeleport = setupTeleport,
-        toggleItemDuplication = toggleItemDuplication,
-        toggleInvisibility = toggleInvisibility,
-        openCheckpointManager = openCheckpointManager
+        toggleInfiniteReach = function() return toggleInfiniteReach() end,
+        togglePlatformWalk = function() return togglePlatformWalk() end,
+        toggleAntiTrigger = function() return toggleAntiTrigger() end,
+        toggleSpider = function() return toggleSpider() end,
+        toggleNoclip = function() return toggleNoclip() end,
+        toggleSpeed = function() return toggleSpeed() end,
+        toggleInfiniteJump = function() return toggleInfiniteJump() end,
+        toggleESP = function() return toggleESP() end,
+        toggleFly = function() return toggleFly() end,
+        toggleRewind = function() return toggleRewind() end,
+        setupTeleport = function() return setupTeleport() end,
+        toggleItemDuplication = function() return toggleItemDuplication() end,
+        toggleInvisibility = function() return toggleInvisibility() end,
+        openCheckpointManager = function() return openCheckpointManager() end
     }
     return functions[funcName]
 end
@@ -213,12 +221,35 @@ local function executeKeybind(keyCode)
         if func then
             local success, result = pcall(func)
             if success then
+                -- Показываем уведомление только если функция выполнилась успешно
+                local functionNames = {
+                    toggleInfiniteReach = "🎯 Teleport Reach",
+                    togglePlatformWalk = "🟩 Platform Walk",
+                    toggleAntiTrigger = "💀 Anti-Trigger",
+                    toggleSpider = "🕷️ Spider Climb",
+                    toggleNoclip = "👻 NoClip",
+                    toggleSpeed = "⚡ Speed Hack",
+                    toggleInfiniteJump = "🦘 Infinite Jump",
+                    toggleESP = "👁️ ESP Players",
+                    toggleFly = "✈️ Fly Mode",
+                    toggleRewind = "⏪ Rewind 5s",
+                    setupTeleport = "🖲️ Teleport (Click)",
+                    toggleItemDuplication = "📦 Дублировать предмет",
+                    toggleInvisibility = "👻 Invisibility",
+                    openCheckpointManager = "📍 Checkpoints"
+                }
+
+                local displayName = functionNames[funcName] or funcName
                 game:GetService("StarterGui"):SetCore("SendNotification", {
                     Title = "⌨️ Keybind",
-                    Text = funcName .. " активировано!",
+                    Text = displayName .. " активировано!",
                     Duration = 1
                 })
+            else
+                warn("Keybind error for " .. funcName .. ": " .. tostring(result))
             end
+        else
+            warn("Function not found: " .. funcName)
         end
     end
 end
@@ -431,7 +462,7 @@ end
 
 local function toggleRewind()
     local success = activateRewind()
-    return false
+    return cheats.rewind
 end
 
 -- ==================== SAVING & LOADING ====================
@@ -464,6 +495,16 @@ local function loadCheckpointsFromFile()
 end
 loadCheckpointsFromFile()
 loadKeybindsFromFile()
+
+-- Отладочная информация для биндов
+if #keybinds > 0 then
+    print("Keybinds loaded: " .. #keybinds .. " binds")
+    for keyCode, funcName in pairs(keybinds) do
+        print("Keybind: " .. getKeyName(keyCode) .. " -> " .. funcName)
+    end
+else
+    print("No keybinds loaded")
+end
 
 -- ==================== KEYBIND HANDLER ====================
 connections.keybindHandler = UserInputService.InputBegan:Connect(function(input, gameProcessed)
