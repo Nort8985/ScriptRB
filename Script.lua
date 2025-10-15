@@ -31,6 +31,12 @@ local cheats = {
 local connections = {}
 local teleportMarker = nil
 
+-- ==================== KEYBIND SYSTEM ====================
+local keybinds = {} -- Таблица для хранения биндов: {keyCode = functionName}
+local keybindConnections = {} -- Для хранения соединений биндов
+local isBindingMode = false -- Флаг режима назначения биндов
+local currentBindingButton = nil -- Текущая кнопка для назначения бинда
+
 -- Конфигурация для invisibility
 local INVISIBILITY_CONFIG = {
     INVISIBILITY_POSITION = Vector3.new(-25.95, 84, 3537.55),
@@ -155,6 +161,115 @@ local function enableTemporaryNoclip(duration)
     end)
     
     return noclipConnection
+end
+
+-- ==================== KEYBIND FUNCTIONS ====================
+local function saveKeybindsToFile()
+    if writefile then
+        pcall(function()
+            writefile("keybinds_" .. game.PlaceId .. ".json", HttpService:JSONEncode(keybinds))
+        end)
+    end
+end
+
+local function loadKeybindsFromFile()
+    if readfile and isfile then
+        local filename = "keybinds_" .. game.PlaceId .. ".json"
+        pcall(function()
+            if isfile(filename) then
+                local decoded = HttpService:JSONDecode(readfile(filename))
+                for keyCode, funcName in pairs(decoded) do
+                    keybinds[tonumber(keyCode)] = funcName
+                end
+            end
+        end)
+    end
+end
+
+local function getFunctionByName(funcName)
+    local functions = {
+        toggleInfiniteReach = toggleInfiniteReach,
+        togglePlatformWalk = togglePlatformWalk,
+        toggleAntiTrigger = toggleAntiTrigger,
+        toggleSpider = toggleSpider,
+        toggleNoclip = toggleNoclip,
+        toggleSpeed = toggleSpeed,
+        toggleInfiniteJump = toggleInfiniteJump,
+        toggleESP = toggleESP,
+        toggleFly = toggleFly,
+        toggleRewind = toggleRewind,
+        setupTeleport = setupTeleport,
+        toggleItemDuplication = toggleItemDuplication,
+        toggleInvisibility = toggleInvisibility,
+        openCheckpointManager = openCheckpointManager
+    }
+    return functions[funcName]
+end
+
+local function executeKeybind(keyCode)
+    local funcName = keybinds[keyCode]
+    if funcName then
+        local func = getFunctionByName(funcName)
+        if func then
+            local success, result = pcall(func)
+            if success then
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "⌨️ Keybind",
+                    Text = funcName .. " активировано!",
+                    Duration = 1
+                })
+            end
+        end
+    end
+end
+
+local function setKeybind(keyCode, funcName)
+    -- Удаляем старый бинд для этой клавиши
+    for k, v in pairs(keybinds) do
+        if v == funcName then
+            keybinds[k] = nil
+            break
+        end
+    end
+
+    -- Устанавливаем новый бинд
+    keybinds[keyCode] = funcName
+    saveKeybindsToFile()
+end
+
+local function removeKeybind(keyCode)
+    keybinds[keyCode] = nil
+    saveKeybindsToFile()
+end
+
+local function getKeyName(keyCode)
+    local keyNames = {
+        [Enum.KeyCode.A] = "A", [Enum.KeyCode.B] = "B", [Enum.KeyCode.C] = "C",
+        [Enum.KeyCode.D] = "D", [Enum.KeyCode.E] = "E", [Enum.KeyCode.F] = "F",
+        [Enum.KeyCode.G] = "G", [Enum.KeyCode.H] = "H", [Enum.KeyCode.I] = "I",
+        [Enum.KeyCode.J] = "J", [Enum.KeyCode.K] = "K", [Enum.KeyCode.L] = "L",
+        [Enum.KeyCode.M] = "M", [Enum.KeyCode.N] = "N", [Enum.KeyCode.O] = "O",
+        [Enum.KeyCode.P] = "P", [Enum.KeyCode.Q] = "Q", [Enum.KeyCode.R] = "R",
+        [Enum.KeyCode.S] = "S", [Enum.KeyCode.T] = "T", [Enum.KeyCode.U] = "U",
+        [Enum.KeyCode.V] = "V", [Enum.KeyCode.W] = "W", [Enum.KeyCode.X] = "X",
+        [Enum.KeyCode.Y] = "Y", [Enum.KeyCode.Z] = "Z",
+        [Enum.KeyCode.One] = "1", [Enum.KeyCode.Two] = "2", [Enum.KeyCode.Three] = "3",
+        [Enum.KeyCode.Four] = "4", [Enum.KeyCode.Five] = "5", [Enum.KeyCode.Six] = "6",
+        [Enum.KeyCode.Seven] = "7", [Enum.KeyCode.Eight] = "8", [Enum.KeyCode.Nine] = "9",
+        [Enum.KeyCode.Zero] = "0", [Enum.KeyCode.Space] = "Пробел",
+        [Enum.KeyCode.LeftShift] = "LShift", [Enum.KeyCode.RightShift] = "RShift",
+        [Enum.KeyCode.LeftControl] = "LCtrl", [Enum.KeyCode.RightControl] = "RCtrl",
+        [Enum.KeyCode.LeftAlt] = "LAlt", [Enum.KeyCode.RightAlt] = "RAlt",
+        [Enum.KeyCode.Tab] = "Tab", [Enum.KeyCode.Escape] = "Esc",
+        [Enum.KeyCode.Insert] = "Ins", [Enum.KeyCode.Delete] = "Del",
+        [Enum.KeyCode.Home] = "Home", [Enum.KeyCode.End] = "End",
+        [Enum.KeyCode.PageUp] = "PgUp", [Enum.KeyCode.PageDown] = "PgDn",
+        [Enum.KeyCode.F1] = "F1", [Enum.KeyCode.F2] = "F2", [Enum.KeyCode.F3] = "F3",
+        [Enum.KeyCode.F4] = "F4", [Enum.KeyCode.F5] = "F5", [Enum.KeyCode.F6] = "F6",
+        [Enum.KeyCode.F7] = "F7", [Enum.KeyCode.F8] = "F8", [Enum.KeyCode.F9] = "F9",
+        [Enum.KeyCode.F10] = "F10", [Enum.KeyCode.F11] = "F11", [Enum.KeyCode.F12] = "F12"
+    }
+    return keyNames[keyCode] or tostring(keyCode)
 end
 
 -- Функция телепортации к объекту и обратно С NOCLIP
@@ -348,6 +463,20 @@ local function loadCheckpointsFromFile()
     end
 end
 loadCheckpointsFromFile()
+loadKeybindsFromFile()
+
+-- ==================== KEYBIND HANDLER ====================
+connections.keybindHandler = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+
+    -- Не обрабатываем бинды в режиме назначения клавиш
+    if isBindingMode then return end
+
+    -- Обрабатываем только клавиши клавиатуры
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        executeKeybind(input.KeyCode)
+    end
+end)
 
 -- ==================== GUI UTILITIES ====================
 local function createCorner(parent, radius)
@@ -1516,6 +1645,221 @@ local function openCheckpointManager()
     updateList()
 end
 
+-- ==================== KEYBIND MANAGER ====================
+local keybindMenu = nil
+local function openKeybindManager()
+    if keybindMenu and keybindMenu.Parent then
+        keybindMenu.Visible = not keybindMenu.Visible
+        return
+    end
+
+    keybindMenu = Instance.new("Frame")
+    keybindMenu.Name = "KeybindMenu"
+    keybindMenu.Size = UDim2.new(0, 400, 0.7, 0)
+    keybindMenu.Position = UDim2.new(0.5, -200, 0.5, 0)
+    keybindMenu.AnchorPoint = Vector2.new(0.5, 0.5)
+    keybindMenu.BackgroundColor3 = Color3.new(0.12, 0.12, 0.12)
+    keybindMenu.BorderSizePixel = 0
+    keybindMenu.Parent = screenGui
+    createCorner(keybindMenu, 12)
+
+    local kbTitleBar = Instance.new("Frame")
+    kbTitleBar.Size = UDim2.new(1, 0, 0, 35)
+    kbTitleBar.BackgroundColor3 = Color3.new(0.08, 0.08, 0.08)
+    kbTitleBar.Parent = keybindMenu
+    createCorner(kbTitleBar, 12)
+
+    local kbTitle = Instance.new("TextLabel")
+    kbTitle.Size = UDim2.new(1, -70, 1, 0)
+    kbTitle.Text = "⌨️ Keybinds"
+    kbTitle.TextScaled = true
+    kbTitle.TextColor3 = Color3.new(0.8, 0.4, 1)
+    kbTitle.BackgroundTransparency = 1
+    kbTitle.Font = Enum.Font.GothamBold
+    kbTitle.Parent = kbTitleBar
+
+    local kbMinBtn = Instance.new("TextButton")
+    kbMinBtn.Size = UDim2.new(0, 30, 0, 30)
+    kbMinBtn.Position = UDim2.new(1, -65, 0, 2.5)
+    kbMinBtn.Text = "_"
+    kbMinBtn.TextScaled = true
+    kbMinBtn.TextColor3 = Color3.new(1,1,1)
+    kbMinBtn.BackgroundColor3 = Color3.new(0.3,0.3,0.3)
+    kbMinBtn.Parent = kbTitleBar
+    createCorner(kbMinBtn, 6)
+    kbMinBtn.MouseButton1Click:Connect(function() keybindMenu.Visible = false end)
+
+    local kbCloseBtn = Instance.new("TextButton")
+    kbCloseBtn.Size = UDim2.new(0, 30, 0, 30)
+    kbCloseBtn.Position = UDim2.new(1, -32, 0, 2.5)
+    kbCloseBtn.Text = "X"
+    kbCloseBtn.TextScaled = true
+    kbCloseBtn.TextColor3 = Color3.new(1,1,1)
+    kbCloseBtn.BackgroundColor3 = Color3.new(0.8,0.2,0.2)
+    kbCloseBtn.Parent = kbTitleBar
+    createCorner(kbCloseBtn, 6)
+    kbCloseBtn.MouseButton1Click:Connect(function() keybindMenu:Destroy(); keybindMenu = nil end)
+
+    makeDraggable(keybindMenu, kbTitleBar)
+
+    local listFrame = Instance.new("ScrollingFrame")
+    listFrame.Size = UDim2.new(0.96, 0, 1, -40)
+    listFrame.Position = UDim2.new(0.02, 0, 0, 40)
+    listFrame.BackgroundColor3 = Color3.new(0.08,0.08,0.08)
+    listFrame.ScrollBarThickness = 4
+    listFrame.Parent = keybindMenu
+    createCorner(listFrame, 8)
+
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.Padding = UDim.new(0, 3)
+    listLayout.Parent = listFrame
+
+    local function updateKeybindList()
+        for _, child in pairs(listFrame:GetChildren()) do
+            if child:IsA("Frame") then child:Destroy() end
+        end
+
+        -- Список доступных функций для биндов
+        local availableFunctions = {
+            {name = "🎯 Teleport Reach", func = "toggleInfiniteReach"},
+            {name = "🟩 Platform Walk", func = "togglePlatformWalk"},
+            {name = "💀 Anti-Trigger", func = "toggleAntiTrigger"},
+            {name = "🕷️ Spider Climb", func = "toggleSpider"},
+            {name = "👻 NoClip", func = "toggleNoclip"},
+            {name = "⚡ Speed Hack", func = "toggleSpeed"},
+            {name = "🦘 Infinite Jump", func = "toggleInfiniteJump"},
+            {name = "👁️ ESP Players", func = "toggleESP"},
+            {name = "✈️ Fly Mode", func = "toggleFly"},
+            {name = "⏪ Rewind 5s", func = "toggleRewind"},
+            {name = "🖲️ Teleport (Click)", func = "setupTeleport"},
+            {name = "📦 Дублировать предмет", func = "toggleItemDuplication"},
+            {name = "👻 Invisibility", func = "toggleInvisibility"},
+            {name = "📍 Checkpoints", func = "openCheckpointManager"}
+        }
+
+        for _, funcInfo in ipairs(availableFunctions) do
+            local item = Instance.new("Frame")
+            item.Size = UDim2.new(1, -8, 0, 50)
+            item.BackgroundColor3 = Color3.new(0.16,0.16,0.16)
+            item.Parent = listFrame
+            createCorner(item, 6)
+
+            local nameLabel = Instance.new("TextLabel", item)
+            nameLabel.Size = UDim2.new(0.4, 0, 1, 0)
+            nameLabel.Position = UDim2.new(0.02, 0, 0, 0)
+            nameLabel.Text = funcInfo.name
+            nameLabel.TextScaled = true
+            nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+            nameLabel.BackgroundTransparency = 1
+            nameLabel.TextColor3 = Color3.new(1, 1, 1)
+
+            local keybindLabel = Instance.new("TextLabel", item)
+            keybindLabel.Size = UDim2.new(0.25, 0, 1, 0)
+            keybindLabel.Position = UDim2.new(0.45, 0, 0, 0)
+            keybindLabel.Text = "Без бинда"
+            keybindLabel.TextScaled = true
+            keybindLabel.TextXAlignment = Enum.TextXAlignment.Center
+            keybindLabel.BackgroundTransparency = 1
+            keybindLabel.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+
+            -- Находим текущий бинд для этой функции
+            local currentKeyCode = nil
+            for keyCode, funcName in pairs(keybinds) do
+                if funcName == funcInfo.func then
+                    currentKeyCode = keyCode
+                    keybindLabel.Text = getKeyName(keyCode)
+                    keybindLabel.TextColor3 = Color3.new(0.4, 0.8, 1)
+                    break
+                end
+            end
+
+            local setBindBtn = Instance.new("TextButton", item)
+            setBindBtn.Size = UDim2.new(0.15, 0, 0.7, 0)
+            setBindBtn.Position = UDim2.new(0.73, 0, 0.15, 0)
+            setBindBtn.Text = "Установить"
+            setBindBtn.TextScaled = true
+            setBindBtn.BackgroundColor3 = Color3.new(0.2, 0.6, 0.2)
+            setBindBtn.TextColor3 = Color3.new(1, 1, 1)
+            createCorner(setBindBtn, 4)
+
+            local removeBindBtn = Instance.new("TextButton", item)
+            removeBindBtn.Size = UDim2.new(0.15, 0, 0.7, 0)
+            removeBindBtn.Position = UDim2.new(0.9, 0, 0.15, 0)
+            removeBindBtn.Text = "Удалить"
+            removeBindBtn.TextScaled = true
+            removeBindBtn.BackgroundColor3 = Color3.new(0.8, 0.2, 0.2)
+            removeBindBtn.TextColor3 = Color3.new(1, 1, 1)
+            createCorner(removeBindBtn, 4)
+
+            setBindBtn.MouseButton1Click:Connect(function()
+                if isBindingMode then return end
+
+                isBindingMode = true
+                currentBindingButton = setBindBtn
+                setBindBtn.Text = "Нажмите клавишу..."
+                setBindBtn.BackgroundColor3 = Color3.new(0.8, 0.6, 0.2)
+
+                -- Обработчик для захвата клавиши
+                local keyCaptureConnection
+                keyCaptureConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                    if gameProcessed then return end
+
+                    if input.UserInputType == Enum.UserInputType.Keyboard then
+                        -- Удаляем старый бинд для этой функции
+                        for k, v in pairs(keybinds) do
+                            if v == funcInfo.func then
+                                keybinds[k] = nil
+                                break
+                            end
+                        end
+
+                        -- Устанавливаем новый бинд
+                        keybinds[input.KeyCode] = funcInfo.func
+                        saveKeybindsToFile()
+
+                        -- Обновляем интерфейс
+                        updateKeybindList()
+
+                        -- Восстанавливаем состояние кнопки
+                        isBindingMode = false
+                        setBindBtn.Text = "Установить"
+                        setBindBtn.BackgroundColor3 = Color3.new(0.2, 0.6, 0.2)
+
+                        -- Отключаем обработчик
+                        if keyCaptureConnection then
+                            keyCaptureConnection:Disconnect()
+                        end
+
+                        game:GetService("StarterGui"):SetCore("SendNotification", {
+                            Title = "⌨️ Keybind",
+                            Text = funcInfo.name .. " привязан к " .. getKeyName(input.KeyCode),
+                            Duration = 2
+                        })
+                    end
+                end)
+            end)
+
+            removeBindBtn.MouseButton1Click:Connect(function()
+                if currentKeyCode then
+                    keybinds[currentKeyCode] = nil
+                    saveKeybindsToFile()
+                    updateKeybindList()
+
+                    game:GetService("StarterGui"):SetCore("SendNotification", {
+                        Title = "⌨️ Keybind",
+                        Text = "Бинд для " .. funcInfo.name .. " удален",
+                        Duration = 2
+                    })
+                end
+            end)
+        end
+
+        listFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y)
+    end
+
+    updateKeybindList()
+end
+
 -- ==================== BUTTON DEFINITIONS ====================
 createButton("🎯 Teleport Reach", toggleInfiniteReach, Color3.fromRGB(0, 191, 255), true)
 createButton("🟩 Platform Walk", togglePlatformWalk, Color3.new(0.3, 0.9, 0.6), true)
@@ -1545,6 +1889,7 @@ end, Color3.new(0.9, 0.6, 0.2), false)
 
 createButton("📍 Checkpoints", openCheckpointManager, Color3.new(0.3, 0.7, 0.9), false)
 createButton("📦 Дублировать предмет", toggleItemDuplication, Color3.new(0.9, 0.7, 0.3), true)
+createButton("⌨️ Keybinds", openKeybindManager, Color3.new(0.8, 0.4, 1), false)
 
 -- ==================== EVENT HANDLERS ====================
 minimizeButton.MouseButton1Click:Connect(function() mainFrame.Visible, toggleButton.Visible = false, true end)
@@ -1593,16 +1938,22 @@ closeButton.MouseButton1Click:Connect(function()
             if _G[funcName] then pcall(_G[funcName]) end
         end
     end
-    
+
+    -- Отключаем обработчик биндов
+    if connections.keybindHandler then
+        connections.keybindHandler:Disconnect()
+    end
+
     screenGui:Destroy()
 end)
 
 
 -- ==================== FINAL NOTIFICATION ====================
 local cpCount = 0; for _ in pairs(_G.SavedCheckpoints) do cpCount = cpCount + 1 end
+local kbCount = 0; for _ in pairs(keybinds) do kbCount = kbCount + 1 end
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "🚀 AC Tester v4.3",
-    Text = "Работает через стены! Задержка 0.5 сек!",
+    Title = "🚀 AC Tester v4.3 + Keybinds",
+    Text = "Работает через стены! Биндов: " .. kbCount,
     Duration = 4
 })
-print("AC TESTER v4.3 TELEPORT REACH ENHANCED + SPIDER-MAN: Loaded successfully!")
+print("AC TESTER v4.3 TELEPORT REACH ENHANCED + SPIDER-MAN + KEYBINDS: Loaded successfully!")
